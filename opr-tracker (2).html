@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Учёт ОПР — доп. часы работы</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --bg: #1c2422;
+    --panel: #263130;
+    --panel-2: #2c3735;
+    --line: #3a4744;
+    --paper: #f1ead9;
+    --ink: #241f18;
+    --ink-soft: #5a5346;
+    --amber: #e2a23a;
+    --clay: #b8552a;
+    --grout: #5c8a7c;
+    --slate: #5f7f92;
+    --text: #ece6d8;
+    --text-dim: #9fa8a3;
+    --danger: #c1432b;
+    --ok: #6fa878;
+    --radius: 10px;
+    --tabbar-h: 62px;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #2a3432 0%, transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', system-ui, sans-serif;
+    min-height:100vh;
+    padding-bottom: calc(var(--tabbar-h) + 22px);
+  }
+
+  .wrap{ max-width:720px; margin:0 auto; padding:0 16px; }
+
+  header{
+    padding:20px 0 16px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:16px;
+  }
+  .top-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .eyebrow{
+    font-family:'Roboto Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin:0 0 4px;
+  }
+  h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.02em;
+    font-size:clamp(24px, 7vw, 32px);
+    margin:0;
+    line-height:1.02;
+  }
+  .save-badge{
+    font-family:'Roboto Mono', monospace;
+    font-size:10.5px;
+    color:var(--ok);
+    white-space:nowrap;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    padding-top:4px;
+  }
+  .save-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--ok); flex:none; }
+  .whoami{ margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .whoami label{
+    font-size:11.5px; color:var(--text-dim); font-family:'Roboto Mono', monospace;
+    text-transform:uppercase; letter-spacing:.06em;
+  }
+  .whoami input{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    padding:9px 10px; border-radius:6px; font-family:'Inter'; font-size:15px; flex:1; min-width:140px;
+  }
+  .whoami input:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+
+  .sec-title{
+    font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:.06em;
+    font-size:12.5px; color:var(--text-dim); display:flex; align-items:center; gap:10px; margin:0 0 12px;
+  }
+  .sec-title::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+  .tabpanel{ display:none; animation: fadein .18s ease; }
+  .tabpanel.active{ display:block; }
+  @keyframes fadein{ from{ opacity:0; transform:translateY(4px);} to{ opacity:1; transform:none; } }
+
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:20px; }
+
+  .form-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{
+    font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-dim); font-family:'Roboto Mono', monospace;
+  }
+  .field select, .field input, .field textarea{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    padding:12px 12px; border-radius:8px; font-family:'Inter'; font-size:16px; width:100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:2px solid var(--amber); outline-offset:1px; border-color:var(--amber);
+  }
+  .field.full{ grid-column:1 / -1; }
+  .field.hours input{ font-family:'Roboto Mono', monospace; font-weight:700; font-size:19px; }
+
+  .hstep{ display:flex; gap:8px; align-items:stretch; }
+  .hstep input{ text-align:center; }
+  .hstep button{
+    width:44px; flex:none; background:var(--panel-2); border:1px solid var(--line); color:var(--amber);
+    font-size:20px; border-radius:8px; cursor:pointer;
+  }
+  .hstep button:active{ background:var(--line); }
+
+  .cat-add-row{ display:flex; gap:8px; margin-top:2px; }
+  .cat-add-row input{ flex:1; }
+  .btn-mini{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text-dim);
+    padding:0 14px; border-radius:8px; font-size:13.5px; cursor:pointer; font-family:'Inter';
+  }
+  .btn-mini:hover{ color:var(--text); border-color:var(--amber); }
+
+  .form-actions{ margin-top:14px; }
+  .btn-primary{
+    width:100%; background:var(--amber); color:#211705; border:none;
+    font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:.05em; font-weight:700;
+    font-size:15.5px; padding:15px 26px; border-radius:9px; cursor:pointer;
+    transition:transform .08s ease, filter .15s ease;
+  }
+  .btn-primary:active{ transform:translateY(1px); filter:brightness(1.05); }
+
+  .filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .filters .field{ flex:1; min-width:130px; }
+  .filters .field.grow2{ flex-basis:100%; }
+
+  .tickets{ display:flex; flex-direction:column; gap:10px; margin-bottom:8px; }
+  .ticket{
+    background:var(--paper); color:var(--ink); border-radius:8px;
+    display:grid; grid-template-columns: auto 1fr auto; grid-template-rows:auto auto;
+    align-items:center; gap:4px 12px; padding:12px 14px; position:relative;
+  }
+  .ticket::before, .ticket::after{
+    content:""; position:absolute; top:50%; transform:translateY(-50%);
+    width:11px; height:11px; border-radius:50%; background:var(--bg); border:1px solid var(--line);
+  }
+  .ticket::before{ left:-6px; }
+  .ticket::after{ right:-6px; }
+
+  .t-hours{
+    grid-row: 1 / 3; font-family:'Roboto Mono', monospace; font-weight:700; font-size:21px;
+    background:var(--ink); color:var(--paper); padding:8px 10px; border-radius:7px; min-width:54px; text-align:center;
+  }
+  .t-body{ min-width:0; }
+  .t-cat{
+    display:inline-block; font-family:'Oswald', sans-serif; text-transform:uppercase; font-size:10.5px;
+    letter-spacing:.05em; font-weight:600; padding:2px 8px; border-radius:4px; color:#fff; margin-bottom:3px;
+  }
+  .t-meta{ font-size:13px; color:var(--ink-soft); }
+  .t-meta b{ color:var(--ink); font-weight:600; }
+  .t-comment{ font-size:12px; color:var(--ink-soft); margin-top:2px; font-style:italic; grid-column: 1 / -1; }
+  .t-actions{ display:flex; justify-content:flex-end; }
+  .t-actions button{
+    background:transparent; border:1px solid var(--line); color:var(--ink-soft);
+    width:30px; height:30px; border-radius:7px; cursor:pointer; font-size:14px;
+  }
+  .t-actions button:active{ border-color:var(--danger); color:var(--danger); }
+
+  .empty-state{
+    text-align:center; padding:36px 20px; color:var(--text-dim);
+    border:1px dashed var(--line); border-radius:var(--radius); font-size:14px;
+  }
+
+  .total-row{ display:grid; grid-template-columns: 108px 1fr 54px; align-items:center; gap:10px; padding:7px 0; }
+  .total-row .label{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-track{ height:8px; background:var(--panel-2); border-radius:4px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:4px; }
+  .total-row .val{ font-family:'Roboto Mono', monospace; font-weight:700; font-size:13.5px; text-align:right; }
+  .grand-total{
+    margin-top:6px; padding-top:14px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:baseline;
+  }
+  .grand-total .gt-label{ font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:.05em; font-size:13px; color:var(--text-dim); }
+  .grand-total .gt-val{ font-family:'Roboto Mono', monospace; font-weight:700; font-size:26px; color:var(--amber); }
+
+  .io-row{ display:flex; flex-direction:column; gap:10px; }
+  .btn-outline{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Inter'; font-weight:600;
+    font-size:14px; padding:13px 14px; border-radius:9px; cursor:pointer; display:flex; align-items:center; gap:10px;
+  }
+  .btn-outline .ic{ font-size:16px; }
+  .btn-outline:active{ border-color:var(--amber); }
+  .btn-outline.xlsx{ background:linear-gradient(135deg, #1c7a4a, #145c38); border-color:#1c7a4a; color:#fff; }
+  .btn-outline.danger{ color:var(--danger); border-color:var(--danger); background:transparent; }
+  .io-note{ font-size:12.5px; color:var(--text-dim); margin-top:2px; line-height:1.55; }
+  input[type=file]{ display:none; }
+
+  .device-key{
+    font-family:'Roboto Mono', monospace; font-size:12.5px; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .device-key .k{ color:var(--amber); letter-spacing:.05em; }
+  .copy-btn{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:6px; padding:5px 10px; font-size:11.5px; cursor:pointer; font-family:'Inter';
+  }
+
+  .tabbar{
+    position:fixed; left:0; right:0; bottom:0; height:var(--tabbar-h);
+    background:#1a201e; border-top:1px solid var(--line); display:flex; z-index:50;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .tabbar-inner{ max-width:720px; margin:0 auto; width:100%; display:flex; }
+  .tab-btn{
+    flex:1; background:none; border:none; color:var(--text-dim);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    font-family:'Inter'; font-size:10.5px; cursor:pointer; padding:6px 2px;
+  }
+  .tab-btn .ic{ font-size:19px; line-height:1; }
+  .tab-btn.active{ color:var(--amber); }
+
+  ::selection{ background:var(--amber); color:#20170a; }
+
+  @media (min-width: 760px){
+    .form-grid{ grid-template-columns: 1fr 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="top-row">
+      <div>
+        <p class="eyebrow">Табель доп. занятости</p>
+        <h1>Учёт ОПР</h1>
+      </div>
+      <div class="save-badge" id="save-badge"><span class="dot"></span><span id="save-text">сохранено</span></div>
+    </div>
+    <div class="whoami">
+      <label for="who">Кто заполняет:</label>
+      <input id="who" type="text" list="names-list" placeholder="Имя / фамилия">
+    </div>
+    <datalist id="names-list"></datalist>
+  </header>
+
+  <div class="tabpanel active" id="tab-add">
+    <div class="panel">
+      <p class="sec-title">Новая запись</p>
+      <div class="form-grid">
+        <div class="field full">
+          <label for="f-category">Вид работы</label>
+          <select id="f-category"></select>
+        </div>
+        <div class="field">
+          <label for="f-date">Дата</label>
+          <input id="f-date" type="date">
+        </div>
+        <div class="field hours">
+          <label for="f-hours">Часы</label>
+          <div class="hstep">
+            <button type="button" id="h-minus">−</button>
+            <input id="f-hours" type="number" min="0.25" step="0.25" placeholder="1.5" inputmode="decimal">
+            <button type="button" id="h-plus">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-name">Сотрудник</label>
+          <input id="f-name" type="text" list="names-list" placeholder="имя">
+        </div>
+        <div class="field full">
+          <label for="f-comment">Комментарий (необязательно)</label>
+          <input id="f-comment" type="text" placeholder="например: клеил ценники в зале Б">
+        </div>
+        <div class="field full">
+          <label>Добавить свою категорию</label>
+          <div class="cat-add-row">
+            <input id="new-cat" type="text" placeholder="название новой категории">
+            <button class="btn-mini" id="add-cat-btn">Добавить</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="add-entry-btn">Записать часы</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-list">
+    <p class="sec-title">Фильтры</p>
+    <div class="filters">
+      <div class="field grow2">
+        <label>Поиск по комментарию</label>
+        <input id="ff-search" type="text" placeholder="искать...">
+      </div>
+      <div class="field">
+        <label>Сотрудник</label>
+        <select id="ff-name"><option value="">Все</option></select>
+      </div>
+      <div class="field">
+        <label>Категория</label>
+        <select id="ff-category"><option value="">Все</option></select>
+      </div>
+      <div class="field">
+        <label>С даты</label>
+        <input id="ff-from" type="date">
+      </div>
+      <div class="field">
+        <label>По дату</label>
+        <input id="ff-to" type="date">
+      </div>
+    </div>
+    <p class="sec-title" id="entries-count">Записи</p>
+    <div class="tickets" id="tickets"></div>
+  </div>
+
+  <div class="tabpanel" id="tab-totals">
+    <p class="sec-title">По категориям</p>
+    <div class="panel"><div id="totals-by-cat"></div></div>
+    <p class="sec-title">По сотрудникам</p>
+    <div class="panel"><div id="totals-by-name"></div></div>
+    <div class="panel">
+      <div class="grand-total">
+        <span class="gt-label">Всего часов</span>
+        <span class="gt-val" id="grand-total">0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-io">
+    <p class="sec-title">Выгрузка</p>
+    <div class="panel">
+      <div class="io-row">
+        <button class="btn-outline xlsx" id="export-xlsx"><span class="ic">📗</span> Скачать Excel (.xlsx)</button>
+        <button class="btn-outline" id="export-csv"><span class="ic">📄</span> Скачать CSV</button>
+      </div>
+    </div>
+
+    <p class="sec-title">Ключ этого устройства</p>
+    <div class="panel">
+      <div class="device-key">
+        <span>Код: <span class="k" id="device-key-val">—</span></span>
+        <button class="copy-btn" id="copy-key">Копировать</button>
+      </div>
+      <p class="io-note">Этот код зашит в id каждой записи, сделанной на этом устройстве. Он гарантирует, что при объединении данных с других телефонов записи никогда не перезапишут и не задвоят друг друга — даже если у двух людей случайно совпадёт имя.</p>
+    </div>
+
+    <p class="sec-title">Обмен между устройствами</p>
+    <div class="panel">
+      <div class="io-row">
+        <button class="btn-outline" id="export-json"><span class="ic">⇪</span> Экспорт JSON (для передачи)</button>
+        <button class="btn-outline" id="import-json-btn"><span class="ic">⇩</span> Импортировать JSON</button>
+        <input type="file" id="import-json-file" accept="application/json">
+      </div>
+      <p class="io-note">Каждый заполняет со своего телефона — данные хранятся локально в этом браузере и не пропадают при перезагрузке страницы. Чтобы собрать часы всей команды: каждый жмёт «Экспорт JSON» и присылает файл, а тот, кто сводит итог — по очереди жмёт «Импортировать JSON». Записи объединятся автоматически без дублей, благодаря уникальному ключу устройства.</p>
+    </div>
+
+    <p class="sec-title">Опасная зона</p>
+    <div class="panel">
+      <button class="btn-outline danger" id="clear-all"><span class="ic">🗑</span> Очистить все записи на этом устройстве</button>
+    </div>
+  </div>
+
+</div>
+
+<nav class="tabbar">
+  <div class="tabbar-inner">
+    <button class="tab-btn active" data-tab="tab-add"><span class="ic">➕</span>Добавить</button>
+    <button class="tab-btn" data-tab="tab-list"><span class="ic">📋</span>Записи</button>
+    <button class="tab-btn" data-tab="tab-totals"><span class="ic">📊</span>Итоги</button>
+    <button class="tab-btn" data-tab="tab-io"><span class="ic">⇄</span>Обмен</button>
+  </div>
+</nav>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "opr_entries_v2";
+  var CATS_KEY = "opr_categories_v2";
+  var WHO_KEY = "opr_who_v2";
+  var DEVICE_KEY = "opr_device_id_v2";
+
+  var DEFAULT_CATEGORIES = [
+    { id: "unload",  name: "Разгрузка плитки",   color: "#b8552a" },
+    { id: "place",   name: "Расстановка плитки", color: "#5c8a7c" },
+    { id: "house",   name: "Хозработы",          color: "#5f7f92" },
+    { id: "extra",   name: "Доп. часы (прочее)", color: "#e2a23a" }
+  ];
+  var PALETTE = ["#b8552a","#5c8a7c","#5f7f92","#e2a23a","#8a6fa8","#7a8a4f","#a85c86","#4f7a8a"];
+
+  function safeSet(key, valueObj){
+    var json = JSON.stringify(valueObj);
+    var ok = true;
+    try{ localStorage.setItem(key, json); }catch(e){ ok = false; }
+    try{ localStorage.setItem(key + "__backup", json); }catch(e){}
+    try{ localStorage.setItem(key + "__ts", String(Date.now())); }catch(e){}
+    return ok;
+  }
+  function safeGet(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(raw !== null && raw !== undefined){ return JSON.parse(raw); }
+    }catch(e){}
+    try{
+      var backup = localStorage.getItem(key + "__backup");
+      if(backup !== null && backup !== undefined){ return JSON.parse(backup); }
+    }catch(e){}
+    return fallback;
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+  function getDeviceId(){
+    var id = null;
+    try{ id = localStorage.getItem(DEVICE_KEY); }catch(e){}
+    if(!id){
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (uid()+"-"+uid()+"-"+uid());
+      try{ localStorage.setItem(DEVICE_KEY, id); }catch(e){}
+    }
+    return id;
+  }
+  var deviceId = getDeviceId();
+  var deviceShort = deviceId.replace(/-/g,"").slice(0,8).toUpperCase();
+
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function fmtDate(iso){
+    var p = iso.split("-");
+    return p.length===3 ? p[2]+"."+p[1]+"."+p[0] : iso;
+  }
+  function fmtHours(h){
+    var n = Number(h);
+    return (Math.round(n*4)/4).toString().replace(".",",");
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  var categories = safeGet(CATS_KEY, DEFAULT_CATEGORIES.slice());
+  var entries = safeGet(STORAGE_KEY, []);
+
+  function persistCategories(){ safeSet(CATS_KEY, categories); flashSaved(); }
+  function persistEntries(){ safeSet(STORAGE_KEY, entries); flashSaved(); }
+
+  var saveText = document.getElementById("save-text");
+  function flashSaved(){ saveText.textContent = "сохранено"; }
+
+  var $ = function(id){ return document.getElementById(id); };
+  var whoInput = $("who");
+  var namesList = $("names-list");
+  var fCategory = $("f-category");
+  var fDate = $("f-date");
+  var fHours = $("f-hours");
+  var fName = $("f-name");
+  var fComment = $("f-comment");
+  var newCatInput = $("new-cat");
+  var ticketsEl = $("tickets");
+  var entriesCountEl = $("entries-count");
+  var ffSearch = $("ff-search");
+  var ffName = $("ff-name");
+  var ffCategory = $("ff-category");
+  var ffFrom = $("ff-from");
+  var ffTo = $("ff-to");
+  var totalsByCatEl = $("totals-by-cat");
+  var totalsByNameEl = $("totals-by-name");
+  var grandTotalEl = $("grand-total");
+
+  $("device-key-val").textContent = deviceShort;
+  $("copy-key").addEventListener("click", function(){
+    navigator.clipboard && navigator.clipboard.writeText(deviceShort).then(function(){
+      $("copy-key").textContent = "Скопировано";
+      setTimeout(function(){ $("copy-key").textContent = "Копировать"; }, 1500);
+    });
+  });
+
+  var tabButtons = document.querySelectorAll(".tab-btn");
+  var tabPanels = document.querySelectorAll(".tabpanel");
+  tabButtons.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      tabButtons.forEach(function(b){ b.classList.remove("active"); });
+      tabPanels.forEach(function(p){ p.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById(btn.getAttribute("data-tab")).classList.add("active");
+      window.scrollTo(0,0);
+      var t = btn.getAttribute("data-tab");
+      if(t === "tab-list" || t === "tab-totals"){ renderAll(); }
+    });
+  });
+
+  fDate.value = todayStr();
+  var savedWho = safeGet(WHO_KEY, "") || "";
+  whoInput.value = savedWho;
+  fName.value = savedWho;
+  whoInput.addEventListener("change", function(){
+    safeSet(WHO_KEY, whoInput.value.trim());
+    if(!fName.value.trim()) fName.value = whoInput.value.trim();
+  });
+
+  function stepHours(delta){
+    var cur = parseFloat(fHours.value) || 0;
+    var next = Math.max(0.25, Math.round((cur+delta)*4)/4);
+    fHours.value = next;
+  }
+  $("h-minus").addEventListener("click", function(){ stepHours(-0.25); });
+  $("h-plus").addEventListener("click", function(){ stepHours(0.25); });
+
+  function catById(id){
+    for(var i=0;i<categories.length;i++) if(categories[i].id===id) return categories[i];
+    return null;
+  }
+
+  function renderCategorySelects(){
+    var opts = categories.map(function(c){ return '<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>'; }).join("");
+    fCategory.innerHTML = opts;
+    ffCategory.innerHTML = '<option value="">Все</option>' + opts;
+  }
+
+  function renderNamesList(){
+    var names = Array.from(new Set(entries.map(function(e){ return e.name; }).filter(Boolean))).sort();
+    namesList.innerHTML = names.map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("");
+    var current = ffName.value;
+    ffName.innerHTML = '<option value="">Все</option>' + names.map(function(n){
+      return '<option value="'+escapeHtml(n)+'">'+escapeHtml(n)+'</option>';
+    }).join("");
+    if(names.indexOf(current) !== -1) ffName.value = current;
+  }
+
+  function getFiltered(){
+    var search = ffSearch.value.trim().toLowerCase();
+    var name = ffName.value;
+    var cat = ffCategory.value;
+    var from = ffFrom.value;
+    var to = ffTo.value;
+    return entries.filter(function(e){
+      if(name && e.name !== name) return false;
+      if(cat && e.category !== cat) return false;
+      if(from && e.date < from) return false;
+      if(to && e.date > to) return false;
+      if(search && (e.comment||"").toLowerCase().indexOf(search) === -1) return false;
+      return true;
+    }).sort(function(a,b){
+      if(a.date === b.date) return b.createdAt - a.createdAt;
+      return a.date < b.date ? 1 : -1;
+    });
+  }
+
+  function renderTickets(){
+    var list = getFiltered();
+    entriesCountEl.textContent = "Записи (" + list.length + ")";
+    if(list.length === 0){
+      ticketsEl.innerHTML = '<div class="empty-state">Записей нет. Добавь первую на вкладке «Добавить» — она появится здесь тикетом.</div>';
+      return;
+    }
+    ticketsEl.innerHTML = list.map(function(e){
+      var c = catById(e.category) || { name:"—", color:"#777" };
+      return (
+        '<div class="ticket" data-id="'+e.id+'">'+
+          '<div class="t-hours">'+fmtHours(e.hours)+'</div>'+
+          '<div class="t-body">'+
+            '<span class="t-cat" style="background:'+c.color+'">'+escapeHtml(c.name)+'</span><br>'+
+            '<span class="t-meta"><b>'+escapeHtml(e.name || "—")+'</b></span>'+
+          '</div>'+
+          '<div class="t-actions"><button data-act="del" title="Удалить">✕</button></div>'+
+          '<div class="t-comment">'+(e.comment ? escapeHtml(e.comment)+' · ' : '')+fmtDate(e.date)+'</div>'+
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderTotals(){
+    var list = getFiltered();
+    var byCat = {}, byName = {}, grand = 0;
+    list.forEach(function(e){
+      var h = Number(e.hours) || 0;
+      grand += h;
+      byCat[e.category] = (byCat[e.category]||0) + h;
+      var nm = e.name || "—";
+      byName[nm] = (byName[nm]||0) + h;
+    });
+
+    var maxCat = Math.max.apply(null, Object.values(byCat).concat([0.0001]));
+    var catRows = categories
+      .map(function(c){ return { c:c, val: byCat[c.id]||0 }; })
+      .filter(function(r){ return r.val > 0; })
+      .sort(function(a,b){ return b.val - a.val; })
+      .map(function(r){
+        var pct = Math.max(4, Math.round((r.val/maxCat)*100));
+        return '<div class="total-row"><div class="label">'+escapeHtml(r.c.name)+'</div>'+
+          '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%; background:'+r.c.color+'"></div></div>'+
+          '<div class="val">'+fmtHours(r.val)+'</div></div>';
+      }).join("");
+    totalsByCatEl.innerHTML = catRows || '<p class="io-note">Нет данных по категориям.</p>';
+
+    var maxName = Math.max.apply(null, Object.values(byName).concat([0.0001]));
+    var nameRows = Object.keys(byName)
+      .sort(function(a,b){ return byName[b]-byName[a]; })
+      .map(function(nm){
+        var pct = Math.max(4, Math.round((byName[nm]/maxName)*100));
+        return '<div class="total-row"><div class="label">'+escapeHtml(nm)+'</div>'+
+          '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%; background:var(--amber)"></div></div>'+
+          '<div class="val">'+fmtHours(byName[nm])+'</div></div>';
+      }).join("");
+    totalsByNameEl.innerHTML = nameRows || '<p class="io-note">Нет данных по сотрудникам.</p>';
+
+    grandTotalEl.textContent = fmtHours(grand) + " ч";
+  }
+
+  function renderAll(){
+    renderNamesList();
+    renderTickets();
+    renderTotals();
+  }
+
+  $("add-cat-btn").addEventListener("click", function(){
+    var name = newCatInput.value.trim();
+    if(!name) return;
+    var id = "c_" + uid();
+    var color = PALETTE[categories.length % PALETTE.length];
+    categories.push({ id:id, name:name, color:color });
+    persistCategories();
+    renderCategorySelects();
+    fCategory.value = id;
+    newCatInput.value = "";
+  });
+
+  $("add-entry-btn").addEventListener("click", function(){
+    var hours = parseFloat(fHours.value);
+    var name = fName.value.trim();
+    var date = fDate.value || todayStr();
+    var category = fCategory.value;
+
+    if(!hours || hours <= 0){
+      fHours.focus(); fHours.style.borderColor = "var(--danger)";
+      setTimeout(function(){ fHours.style.borderColor = ""; }, 1200);
+      return;
+    }
+    if(!name){
+      fName.focus(); fName.style.borderColor = "var(--danger)";
+      setTimeout(function(){ fName.style.borderColor = ""; }, 1200);
+      return;
+    }
+
+    entries.push({
+      id: deviceShort + "-" + uid(),
+      device: deviceShort,
+      name: name,
+      category: category,
+      hours: hours,
+      date: date,
+      comment: fComment.value.trim(),
+      createdAt: Date.now()
+    });
+    persistEntries();
+
+    if(!whoInput.value.trim()){
+      whoInput.value = name;
+      safeSet(WHO_KEY, name);
+    }
+
+    fHours.value = "";
+    fComment.value = "";
+
+    var btn = $("add-entry-btn");
+    var old = btn.textContent;
+    btn.textContent = "Записано ✓";
+    setTimeout(function(){ btn.textContent = old; }, 900);
+  });
+
+  ticketsEl.addEventListener("click", function(ev){
+    var btn = ev.target.closest("button[data-act='del']");
+    if(!btn) return;
+    var ticket = ev.target.closest(".ticket");
+    var id = ticket.getAttribute("data-id");
+    if(!confirm("Удалить эту запись?")) return;
+    entries = entries.filter(function(e){ return e.id !== id; });
+    persistEntries();
+    renderAll();
+  });
+
+  [ffSearch, ffName, ffCategory, ffFrom, ffTo].forEach(function(el){
+    el.addEventListener("input", renderAll);
+    el.addEventListener("change", renderAll);
+  });
+
+  $("export-csv").addEventListener("click", function(){
+    var rows = [["Дата","Сотрудник","Категория","Часы","Комментарий"]];
+    getFiltered().forEach(function(e){
+      var c = catById(e.category);
+      rows.push([fmtDate(e.date), e.name, c?c.name:e.category, fmtHours(e.hours), e.comment||""]);
+    });
+    var csv = rows.map(function(r){
+      return r.map(function(v){
+        v = String(v).replace(/"/g,'""');
+        return /[;"\n]/.test(v) ? '"'+v+'"' : v;
+      }).join(";");
+    }).join("\r\n");
+    var blob = new Blob(["\uFEFF"+csv], { type: "text/csv;charset=utf-8;" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "opr_" + todayStr() + ".csv";
+    a.click();
+  });
+
+  function hexToARGB(hex){ return "FF" + hex.replace("#","").toUpperCase(); }
+  function tint(hex, amt){
+    var h = hex.replace("#","");
+    var r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+    r = Math.round(r + (255-r)*amt); g = Math.round(g + (255-g)*amt); b = Math.round(b + (255-b)*amt);
+    return "#" + [r,g,b].map(function(v){ return v.toString(16).padStart(2,"0"); }).join("");
+  }
+
+  $("export-xlsx").addEventListener("click", function(){
+    if(typeof ExcelJS === "undefined"){
+      alert("Не удалось загрузить модуль Excel. Проверь подключение к интернету и попробуй снова.");
+      return;
+    }
+    var list = getFiltered().slice().sort(function(a,b){
+      if(a.date === b.date) return a.createdAt - b.createdAt;
+      return a.date < b.date ? -1 : 1;
+    });
+
+    var wb = new ExcelJS.Workbook();
+    wb.creator = "ОПР-трекер";
+    wb.created = new Date();
+
+    var DARK = "FF1C2422";
+    var AMBER = "FFE2A23A";
+    var INK = "FF241F18";
+
+    var ws = wb.addWorksheet("Записи", { views:[{ state:"frozen", ySplit:3 }] });
+    ws.columns = [{ width: 12 }, { width: 22 }, { width: 24 }, { width: 10 }, { width: 44 }];
+
+    ws.mergeCells("A1:E1");
+    var titleCell = ws.getCell("A1");
+    titleCell.value = "Учёт ОПР — выгрузка записей";
+    titleCell.font = { name:"Calibri", size:14, bold:true, color:{argb:"FFFFFFFF"} };
+    titleCell.alignment = { vertical:"middle", horizontal:"left" };
+    titleCell.fill = { type:"pattern", pattern:"solid", fgColor:{argb:DARK} };
+    ws.getRow(1).height = 26;
+
+    ws.mergeCells("A2:E2");
+    var subCell = ws.getCell("A2");
+    var now = new Date();
+    var range = "";
+    if(ffFrom.value || ffTo.value){
+      range = " · период: " + (ffFrom.value ? fmtDate(ffFrom.value) : "…") + " — " + (ffTo.value ? fmtDate(ffTo.value) : "…");
+    }
+    subCell.value = "Сформировано " + fmtDate(todayStr()) + " " + now.toTimeString().slice(0,5) + " · записей: " + list.length + range;
+    subCell.font = { name:"Calibri", size:10, italic:true, color:{argb:"FFEDEDED"} };
+    subCell.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FF3A4744"} };
+    ws.getRow(2).height = 18;
+
+    var headerRow = ws.getRow(3);
+    ["Дата","Сотрудник","Категория","Часы","Комментарий"].forEach(function(h, i){
+      var cell = headerRow.getCell(i+1);
+      cell.value = h;
+      cell.font = { name:"Calibri", size:11, bold:true, color:{argb:"FFFFFFFF"} };
+      cell.fill = { type:"pattern", pattern:"solid", fgColor:{argb:INK} };
+      cell.alignment = { vertical:"middle", horizontal: i===3 ? "center" : "left" };
+      cell.border = { bottom:{style:"thin", color:{argb:"FF000000"}} };
+    });
+    headerRow.height = 20;
+
+    var rIdx = 4;
+    list.forEach(function(e, i){
+      var c = catById(e.category) || { name:e.category, color:"#888888" };
+      var row = ws.getRow(rIdx);
+      row.getCell(1).value = fmtDate(e.date);
+      row.getCell(2).value = e.name;
+      row.getCell(3).value = c.name;
+      row.getCell(4).value = Number(e.hours);
+      row.getCell(5).value = e.comment || "";
+
+      var band = i % 2 === 0 ? "FFFFFFFF" : "FFF4F0E6";
+      for(var col=1; col<=5; col++){
+        var cell = row.getCell(col);
+        cell.fill = { type:"pattern", pattern:"solid", fgColor:{argb: col===3 ? hexToARGB(tint(c.color, 0.72)) : band} };
+        cell.font = { name:"Calibri", size:10.5, color:{argb:"FF241F18"} };
+        cell.border = { bottom:{style:"hair", color:{argb:"FFDAD3C2"}} };
+      }
+      row.getCell(3).font = { name:"Calibri", size:10.5, bold:true, color:{argb:"FF241F18"} };
+      row.getCell(4).alignment = { horizontal:"center" };
+      row.getCell(4).numFmt = "General";
+      rIdx++;
+    });
+
+    var totalRow = ws.getRow(rIdx);
+    totalRow.getCell(2).value = "ИТОГО:";
+    totalRow.getCell(2).font = { bold:true, size:11 };
+    totalRow.getCell(4).value = { formula: "SUM(D4:D"+(rIdx-1)+")" };
+    totalRow.getCell(4).font = { bold:true, size:11 };
+    totalRow.getCell(4).alignment = { horizontal:"center" };
+    totalRow.getCell(4).numFmt = "General";
+    for(var c2=1;c2<=5;c2++){
+      totalRow.getCell(c2).fill = { type:"pattern", pattern:"solid", fgColor:{argb:AMBER} };
+      totalRow.getCell(c2).border = { top:{style:"medium", color:{argb:"FF241F18"}} };
+    }
+    totalRow.height = 20;
+
+    if(rIdx - 1 >= 4){ ws.autoFilter = { from:"A3", to:"E"+(rIdx-1) }; }
+
+    var ws2 = wb.addWorksheet("Итоги");
+    ws2.columns = [{width:28},{width:14},{width:36}];
+
+    ws2.mergeCells("A1:C1");
+    var t2 = ws2.getCell("A1");
+    t2.value = "Итоги по категориям";
+    t2.font = { size:13, bold:true, color:{argb:"FFFFFFFF"} };
+    t2.fill = { type:"pattern", pattern:"solid", fgColor:{argb:DARK} };
+    ws2.getRow(1).height = 22;
+
+    var hdr2 = ws2.getRow(2);
+    ["Категория","Часы","Доля"].forEach(function(h,i){
+      var cell = hdr2.getCell(i+1);
+      cell.value = h;
+      cell.font = { bold:true, color:{argb:"FFFFFFFF"} };
+      cell.fill = { type:"pattern", pattern:"solid", fgColor:{argb:INK} };
+    });
+
+    var byCat = {}, grand = 0;
+    list.forEach(function(e){ var h = Number(e.hours)||0; grand += h; byCat[e.category] = (byCat[e.category]||0)+h; });
+    var catEntries = categories.map(function(c){ return {c:c, val: byCat[c.id]||0}; }).filter(function(r){ return r.val>0; }).sort(function(a,b){ return b.val-a.val; });
+
+    var r2 = 3;
+    catEntries.forEach(function(r){
+      var row = ws2.getRow(r2);
+      row.getCell(1).value = r.c.name;
+      row.getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb:hexToARGB(tint(r.c.color,0.72))} };
+      row.getCell(1).font = { bold:true };
+      row.getCell(2).value = r.val;
+      row.getCell(2).numFmt = "General";
+      row.getCell(2).alignment = { horizontal:"center" };
+      row.getCell(3).value = grand > 0 ? (r.val/grand) : 0;
+      row.getCell(3).numFmt = "0.0%";
+      r2++;
+    });
+    var grandRow2 = ws2.getRow(r2);
+    grandRow2.getCell(1).value = "ВСЕГО";
+    grandRow2.getCell(1).font = { bold:true };
+    grandRow2.getCell(2).value = grand;
+    grandRow2.getCell(2).numFmt = "General";
+    grandRow2.getCell(2).alignment = { horizontal:"center" };
+    for(var cc=1;cc<=3;cc++){ grandRow2.getCell(cc).fill = { type:"pattern", pattern:"solid", fgColor:{argb:AMBER} }; }
+    r2 += 2;
+
+    ws2.mergeCells("A"+r2+":C"+r2);
+    var t3 = ws2.getCell("A"+r2);
+    t3.value = "Итоги по сотрудникам";
+    t3.font = { size:13, bold:true, color:{argb:"FFFFFFFF"} };
+    t3.fill = { type:"pattern", pattern:"solid", fgColor:{argb:DARK} };
+    r2++;
+    var hdr3 = ws2.getRow(r2);
+    ["Сотрудник","Часы","Доля"].forEach(function(h,i){
+      var cell = hdr3.getCell(i+1);
+      cell.value = h;
+      cell.font = { bold:true, color:{argb:"FFFFFFFF"} };
+      cell.fill = { type:"pattern", pattern:"solid", fgColor:{argb:INK} };
+    });
+    r2++;
+    var byName = {};
+    list.forEach(function(e){ var nm = e.name||"—"; byName[nm] = (byName[nm]||0) + (Number(e.hours)||0); });
+    Object.keys(byName).sort(function(a,b){ return byName[b]-byName[a]; }).forEach(function(nm, i){
+      var row = ws2.getRow(r2);
+      row.getCell(1).value = nm;
+      row.getCell(1).font = { bold:true };
+      row.getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb: i%2===0 ? "FFFFFFFF" : "FFF4F0E6"} };
+      row.getCell(2).value = byName[nm];
+      row.getCell(2).numFmt = "General";
+      row.getCell(2).alignment = { horizontal:"center" };
+      row.getCell(3).value = grand>0 ? byName[nm]/grand : 0;
+      row.getCell(3).numFmt = "0.0%";
+      r2++;
+    });
+
+    wb.xlsx.writeBuffer().then(function(buffer){
+      var blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "OPR_" + todayStr() + ".xlsx";
+      a.click();
+    }).catch(function(err){
+      console.error(err);
+      alert("Не удалось сформировать Excel-файл. Попробуй ещё раз.");
+    });
+  });
+
+  $("export-json").addEventListener("click", function(){
+    var payload = { device: deviceShort, categories: categories, entries: entries };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "opr_export_" + deviceShort + "_" + todayStr() + ".json";
+    a.click();
+  });
+
+  $("import-json-btn").addEventListener("click", function(){ $("import-json-file").click(); });
+  $("import-json-file").addEventListener("change", function(ev){
+    var file = ev.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        var incomingCats = data.categories || [];
+        var incomingEntries = data.entries || [];
+
+        incomingCats.forEach(function(c){ if(!catById(c.id)) categories.push(c); });
+        persistCategories();
+
+        var existingIds = new Set(entries.map(function(e){ return e.id; }));
+        var added = 0;
+        incomingEntries.forEach(function(e){
+          if(!existingIds.has(e.id)){ entries.push(e); added++; }
+        });
+        persistEntries();
+        renderCategorySelects();
+        renderAll();
+        alert("Импортировано записей: " + added + (data.device ? " (устройство "+data.device+")" : ""));
+      }catch(err){
+        alert("Не удалось прочитать файл. Убедись, что это JSON, экспортированный из этого же приложения.");
+      }
+      $("import-json-file").value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  $("clear-all").addEventListener("click", function(){
+    if(!confirm("Удалить ВСЕ записи на этом устройстве? Действие необратимо.")) return;
+    entries = [];
+    persistEntries();
+    renderAll();
+  });
+
+  renderCategorySelects();
+  renderAll();
+})();
+</script>
+</body>
+</html>
